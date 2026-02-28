@@ -1,6 +1,7 @@
 package com.example.travelbuddy;
 
 import android.content.Intent;
+import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,8 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.List;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
 
@@ -41,13 +44,18 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
         holder.title.setText(tip.title);
         holder.location.setText(tip.location);
 
+        // Set timestamp
+        long now = System.currentTimeMillis();
+        CharSequence ago = DateUtils.getRelativeTimeSpanString(tip.timestamp, now, DateUtils.MINUTE_IN_MILLIS);
+        holder.timestamp.setText(ago);
+
         if (tip.userId != null) {
             usersReference.child(tip.userId).child("name").addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                     if (snapshot.exists()) {
                         String authorName = snapshot.getValue(String.class);
-                        holder.author.setText("by " + authorName);
+                        holder.author.setText(authorName);
                     }
                 }
 
@@ -71,13 +79,16 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
     }
 
     static class TipViewHolder extends RecyclerView.ViewHolder {
-        TextView title, location, author;
+        TextView title, location, author, timestamp;
+        CircleImageView authorProfileImage;
 
         public TipViewHolder(@NonNull View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.tipTitle);
             location = itemView.findViewById(R.id.tipLocation);
             author = itemView.findViewById(R.id.tipAuthor);
+            timestamp = itemView.findViewById(R.id.tipTimestamp);
+            authorProfileImage = itemView.findViewById(R.id.authorProfileImage);
         }
     }
 }

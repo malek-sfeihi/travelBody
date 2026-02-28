@@ -1,16 +1,17 @@
 package com.example.travelbuddy;
 
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -19,14 +20,13 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class ChatActivity extends AppCompatActivity {
 
     private RecyclerView chatRecyclerView;
-    private EditText messageInput;
-    private Button sendButton;
+    private TextInputEditText messageInput;
+    private MaterialButton sendButton;
 
     private MessageAdapter messageAdapter;
     private List<Message> messageList;
@@ -39,6 +39,10 @@ public class ChatActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         receiverId = getIntent().getStringExtra("userId");
         senderId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -104,5 +108,11 @@ public class ChatActivity extends AppCompatActivity {
                 messageInput.setText("");
             }
         });
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
     }
 }
