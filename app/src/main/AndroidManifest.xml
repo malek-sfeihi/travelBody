@@ -12,8 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TravelBuddy">
         <activity
-            android:name=".TipsFeedActivity"
-            android:exported="false" />
+        android:name=".TipsFeedActivity"
+        android:exported="false" />
+        <activity
+            android:name=".AddTipActivity"
+            android:exported="false"/>
         <activity
             android:name=".LoginActivity"
             android:exported="true">
