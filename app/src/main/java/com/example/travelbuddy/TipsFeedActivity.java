@@ -46,7 +46,10 @@ public class TipsFeedActivity extends AppCompatActivity {
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
             int itemId = item.getItemId();
-            if (itemId == R.id.navigation_add) {
+            if (itemId == R.id.navigation_map) {
+                startActivity(new Intent(this, MapsActivity.class));
+                return true;
+            } else if (itemId == R.id.navigation_add) {
                 startActivity(new Intent(this, AddTipActivity.class));
                 return true;
             } else if (itemId == R.id.navigation_messages) {

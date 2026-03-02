@@ -1,5 +1,8 @@
 package com.example.travelbuddy;
 
+import com.google.firebase.database.IgnoreExtraProperties;
+
+@IgnoreExtraProperties
 public class Tip {
     public String id;
     public String title;

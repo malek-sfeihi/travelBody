@@ -50,4 +50,5 @@ dependencies {
     implementation libs.material.v1110
     implementation libs.play.services.auth
     implementation 'de.hdodenhof:circleimageview:3.1.0'
+    implementation 'org.osmdroid:osmdroid-android:6.1.20'
 }
