@@ -54,6 +54,17 @@
                     android:textSize="12sp"
                     tools:text="2 hours ago" />
             </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnDeleteTip"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:padding="6dp"
+                android:src="@android:drawable/ic_menu_delete"
+                android:contentDescription="Supprimer"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:visibility="gone"
+                tools:visibility="visible" />
         </LinearLayout>
 
         <View
