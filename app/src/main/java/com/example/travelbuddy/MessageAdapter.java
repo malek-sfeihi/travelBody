@@ -12,8 +12,15 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.List;
 
+/*
+ * Adapter pour le chat : affiche les messages dans le RecyclerView.
+ * On utilise deux layouts différents selon que le message est envoyé ou reçu :
+ * - item_message_sent.xml pour nos messages (bulle à droite)
+ * - item_message_received.xml pour les messages de l'autre (bulle à gauche)
+ */
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
 
+    // Constantes pour distinguer les deux types de cellules
     private static final int VIEW_TYPE_SENT = 1;
     private static final int VIEW_TYPE_RECEIVED = 2;
 
@@ -23,6 +30,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         this.messageList = messageList;
     }
 
+    // Détermine quel layout utiliser : si c'est mon message → SENT, sinon → RECEIVED
     @Override
     public int getItemViewType(int position) {
         if (messageList.get(position).senderId.equals(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
@@ -32,6 +40,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         }
     }
 
+    // On inflate le bon layout selon le type (envoyé ou reçu)
     @NonNull
     @Override
     public MessageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -44,6 +53,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         return new MessageViewHolder(view);
     }
 
+    // On remplit la cellule avec le texte du message
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         Message message = messageList.get(position);
@@ -55,6 +65,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         return messageList.size();
     }
 
+    // ViewHolder simple : juste un TextView pour le contenu du message
     static class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
 

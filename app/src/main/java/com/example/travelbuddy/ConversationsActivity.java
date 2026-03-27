@@ -19,14 +19,20 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
+/*
+ * Écran qui affiche la liste des conversations de l'utilisateur connecté.
+ * On parcourt le noeud "chats" dans Firebase : chaque salon a une clé
+ * composée des deux UIDs concaténés. Si la clé contient mon UID,
+ * c'est que je fais partie de cette conversation.
+ */
 public class ConversationsActivity extends AppCompatActivity {
 
     private RecyclerView conversationsRecyclerView;
     private ConversationAdapter conversationAdapter;
     private List<Conversation> conversationList;
 
-    private DatabaseReference chatsRef;
-    private DatabaseReference usersRef;
+    private DatabaseReference chatsRef;   // référence vers "chats"
+    private DatabaseReference usersRef;   // référence vers "users" (pour récupérer les noms)
     private String currentUserId;
 
     @Override
@@ -34,6 +40,13 @@ public class ConversationsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversations);
 
+        // Toolbar avec bouton retour
+        setSupportActionBar(findViewById(R.id.toolbar));
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
+        // Mise en place du RecyclerView
         conversationsRecyclerView = findViewById(R.id.conversationsRecyclerView);
         conversationsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
@@ -41,6 +54,7 @@ public class ConversationsActivity extends AppCompatActivity {
         conversationAdapter = new ConversationAdapter(conversationList);
         conversationsRecyclerView.setAdapter(conversationAdapter);
 
+        // On récupère l'UID de l'utilisateur connecté
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         usersRef = FirebaseDatabase.getInstance().getReference("users");
@@ -48,6 +62,7 @@ public class ConversationsActivity extends AppCompatActivity {
         loadConversations();
     }
 
+    // Charge toutes les conversations où l'utilisateur courant est impliqué
     private void loadConversations() {
         chatsRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -55,9 +70,13 @@ public class ConversationsActivity extends AppCompatActivity {
                 conversationList.clear();
                 for (DataSnapshot chatSnapshot : snapshot.getChildren()) {
                     String chatRoomId = chatSnapshot.getKey();
+
+                    // Si la clé du salon contient mon UID, c'est ma conversation
                     if (chatRoomId != null && chatRoomId.contains(currentUserId)) {
+                        // On déduit l'UID de l'autre personne en enlevant le mien
                         String otherUserId = chatRoomId.replace(currentUserId, "");
 
+                        // On va chercher le nom de l'autre utilisateur dans "users"
                         usersRef.child(otherUserId).child("name").addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
                             public void onDataChange(@NonNull DataSnapshot userSnapshot) {
@@ -71,7 +90,6 @@ public class ConversationsActivity extends AppCompatActivity {
 
                             @Override
                             public void onCancelled(@NonNull DatabaseError error) {
-
                             }
                         });
                     }
@@ -83,5 +101,12 @@ public class ConversationsActivity extends AppCompatActivity {
                 Toast.makeText(ConversationsActivity.this, "Failed to load conversations.", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    // Bouton retour dans la toolbar
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
     }
 }
