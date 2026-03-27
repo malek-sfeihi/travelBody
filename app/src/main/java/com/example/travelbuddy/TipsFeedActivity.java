@@ -2,6 +2,9 @@ package com.example.travelbuddy;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.animation.AnimationUtils;
+import android.view.animation.LayoutAnimationController;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -11,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -22,15 +26,14 @@ import java.util.List;
 
 /*
  * Écran principal après connexion : le fil d'astuces de voyage.
- * On affiche tous les tips postés par les utilisateurs dans un RecyclerView.
- * La barre de navigation en bas permet d'accéder à la carte, ajouter un tip,
- * voir les messages ou se déconnecter.
+ * Affiche un header de bienvenue personnalisé avec le nom de l'utilisateur
+ * puis la liste des tips dans un RecyclerView avec animation.
  */
 public class TipsFeedActivity extends AppCompatActivity {
 
     RecyclerView recyclerView;
-    List<Tip> tipList;         // liste qui contient tous les tips récupérés de Firebase
-    TipAdapter adapter;        // adapter qui fait le lien entre tipList et le RecyclerView
+    List<Tip> tipList;
+    TipAdapter adapter;
     DatabaseReference databaseReference;
     FirebaseAuth auth;
 
@@ -41,37 +44,39 @@ public class TipsFeedActivity extends AppCompatActivity {
 
         setSupportActionBar(findViewById(R.id.toolbar));
 
-        // Mise en place du RecyclerView avec un layout vertical classique
+        // RecyclerView avec layout vertical
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // On initialise la liste vide et on branche l'adapter
         tipList = new ArrayList<>();
         adapter = new TipAdapter(tipList);
         recyclerView.setAdapter(adapter);
 
-        // Référence vers le noeud "tips" dans Firebase
+        // Animation slide-in pour les items du RecyclerView
+        LayoutAnimationController animation = AnimationUtils.loadLayoutAnimation(
+                this, R.anim.layout_animation_slide_in);
+        recyclerView.setLayoutAnimation(animation);
+
         databaseReference = FirebaseDatabase.getInstance().getReference("tips");
         auth = FirebaseAuth.getInstance();
 
-        // Gestion de la barre de navigation du bas
+        // Personnalisation de l'en-tête de bienvenue avec le nom de l'utilisateur
+        loadWelcomeHeader();
+
+        // Navigation du bas
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_map) {
-                // Ouvre la carte avec les marqueurs
                 startActivity(new Intent(this, MapsActivity.class));
                 return true;
             } else if (itemId == R.id.navigation_add) {
-                // Ouvre le formulaire pour poster un nouveau tip
                 startActivity(new Intent(this, AddTipActivity.class));
                 return true;
             } else if (itemId == R.id.navigation_messages) {
-                // Ouvre la liste des conversations
                 startActivity(new Intent(this, ConversationsActivity.class));
                 return true;
             } else if (itemId == R.id.navigation_logout) {
-                // Déconnexion : on vide la pile d'activités et on retourne au login
                 auth.signOut();
                 Intent intent = new Intent(this, LoginActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -81,19 +86,18 @@ public class TipsFeedActivity extends AppCompatActivity {
             return false;
         });
 
-        // Écoute en temps réel sur le noeud "tips"
-        // Dès qu'un tip est ajouté/modifié/supprimé, la liste se met à jour toute seule
+        // Écoute en temps réel des tips
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                tipList.clear(); // on vide d'abord pour éviter les doublons
+                tipList.clear();
                 for (DataSnapshot data : snapshot.getChildren()) {
-                    // Chaque enfant du noeud "tips" est converti en objet Tip
                     Tip tip = data.getValue(Tip.class);
                     tipList.add(tip);
                 }
-                // On notifie l'adapter que les données ont changé
                 adapter.notifyDataSetChanged();
+                // Relancer l'animation quand les données changent
+                recyclerView.scheduleLayoutAnimation();
             }
 
             @Override
@@ -102,5 +106,29 @@ public class TipsFeedActivity extends AppCompatActivity {
                         error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    // Charge le nom de l'utilisateur connecté et met à jour le texte de bienvenue
+    private void loadWelcomeHeader() {
+        FirebaseUser user = auth.getCurrentUser();
+        TextView welcomeText = findViewById(R.id.welcomeText);
+
+        if (user != null) {
+            DatabaseReference userRef = FirebaseDatabase.getInstance()
+                    .getReference("users").child(user.getUid()).child("name");
+            userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    if (snapshot.exists()) {
+                        String name = snapshot.getValue(String.class);
+                        welcomeText.setText("Bonjour, " + name + " !");
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                }
+            });
+        }
     }
 }

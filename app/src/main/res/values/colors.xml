@@ -2,20 +2,42 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="purple_500">#9C27B0</color>
-    <color name="purple_700">#7B1FA2</color>
+
+    <!-- Palette voyage : bleu profond + corail chaud -->
+    <color name="primary">#1565C0</color>
+    <color name="primary_dark">#0D47A1</color>
+    <color name="primary_light">#42A5F5</color>
+    <color name="accent">#FF7043</color>
+
+    <!-- Surfaces & fonds -->
+    <color name="surface_background">#F5F7FA</color>
+    <color name="card_background">#FFFFFF</color>
+
+    <!-- Textes -->
+    <color name="text_primary">#1A2138</color>
+    <color name="text_secondary">#5A6278</color>
+    <color name="text_tertiary">#8E95A5</color>
+
+    <!-- Utilitaires -->
+    <color name="divider">#E8ECF1</color>
+    <color name="ripple">#1A1565C0</color>
+
+    <!-- Chat -->
+    <color name="bubble_received">#EEF2F7</color>
+    <color name="bubble_sent">#1565C0</color>
+
+    <!-- Navigation -->
+    <color name="nav_active">#1565C0</color>
+    <color name="nav_inactive">#8E95A5</color>
+
+    <!-- Header gradient du fil -->
+    <color name="header_start">#1565C0</color>
+    <color name="header_end">#42A5F5</color>
+
+    <!-- Compat (pour ne rien casser) -->
+    <color name="purple_500">#1565C0</color>
+    <color name="purple_700">#0D47A1</color>
     <color name="teal_200">#80CBC4</color>
     <color name="teal_700">#00796B</color>
-
-    <!-- Elegant minimal palette -->
-    <color name="surface_background">#FAFAFA</color>
-    <color name="card_background">#FFFFFF</color>
-    <color name="text_primary">#1A1A1A</color>
-    <color name="text_secondary">#6B6B6B</color>
-    <color name="text_tertiary">#9E9E9E</color>
-    <color name="divider">#EEEEEE</color>
-    <color name="accent_slate">#4A5568</color>
-    <color name="bubble_received">#F0F2F5</color>
-    <color name="bubble_sent">#4A5568</color>
-    <color name="ripple">#1A000000</color>
+    <color name="accent_slate">#1565C0</color>
 </resources>
