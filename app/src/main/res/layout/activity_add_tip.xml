@@ -71,6 +71,26 @@
 
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/selectImageButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:padding="16dp"
+                android:text="Ajouter une photo"
+                app:icon="@android:drawable/ic_menu_camera"
+                app:iconGravity="textStart" />
+
+            <ImageView
+                android:id="@+id/imagePreview"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="8dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:adjustViewBounds="true" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/postButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

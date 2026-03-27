@@ -46,9 +46,10 @@ dependencies {
     implementation platform(libs.firebase.bom)
     implementation libs.firebase.auth
     implementation libs.firebase.database
-    implementation libs.firebase.storage
+
     implementation libs.material.v1110
     implementation libs.play.services.auth
     implementation 'de.hdodenhof:circleimageview:3.1.0'
     implementation 'org.osmdroid:osmdroid-android:6.1.20'
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
 }

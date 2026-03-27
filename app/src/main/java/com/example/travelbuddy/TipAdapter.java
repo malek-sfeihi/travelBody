@@ -2,7 +2,10 @@ package com.example.travelbuddy;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.text.format.DateUtils;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +16,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -26,34 +30,26 @@ import de.hdodenhof.circleimageview.CircleImageView;
 
 /*
  * Adapter pour afficher les astuces de voyage dans un RecyclerView.
- * Chaque item montre le titre, le lieu, la description, le nom de l'auteur
- * et depuis combien de temps le tip a été posté.
- * En cliquant sur le nom de l'auteur, on ouvre son profil.
- * Si le tip appartient à l'utilisateur connecté, on affiche :
- *   - une icone crayon pour modifier le tip
- *   - une icone corbeille pour supprimer le tip
+ * Chaque item montre le titre, le lieu, la description, la photo (si disponible),
+ * le nom de l'auteur avec son avatar et depuis combien de temps le tip a été posté.
+ * Si le tip appartient à l'utilisateur connecté, on affiche les icones modifier/supprimer.
  */
 public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
 
     private List<Tip> tipList;
-    // Référence vers "users" pour aller chercher le nom de l'auteur de chaque tip
     private DatabaseReference usersReference;
-    // Référence vers "tips" pour pouvoir supprimer
     private DatabaseReference tipsReference;
-    // UID de l'utilisateur actuellement connecté
     private String currentUserId;
 
     public TipAdapter(List<Tip> tipList) {
         this.tipList = tipList;
         this.usersReference = FirebaseDatabase.getInstance().getReference("users");
         this.tipsReference = FirebaseDatabase.getInstance().getReference("tips");
-        // On récupère l'uid une seule fois au lieu de le faire dans chaque cellule
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
             this.currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         }
     }
 
-    // Appelé quand le RecyclerView a besoin d'une nouvelle cellule
     @NonNull
     @Override
     public TipViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -62,14 +58,13 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
         return new TipViewHolder(view);
     }
 
-    // Appelé pour remplir une cellule avec les données d'un tip
     @Override
     public void onBindViewHolder(@NonNull TipViewHolder holder, int position) {
         Tip tip = tipList.get(position);
         holder.title.setText(tip.title);
         holder.location.setText(tip.location);
 
-        // On affiche la description seulement si elle n'est pas vide
+        // Affiche la description si elle n'est pas vide
         if (tip.description != null && !tip.description.trim().isEmpty()) {
             holder.description.setText(tip.description);
             holder.description.setVisibility(View.VISIBLE);
@@ -77,12 +72,26 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             holder.description.setVisibility(View.GONE);
         }
 
-        // Calcul du temps relatif ("il y a 2 heures", "hier", etc.)
+        // Temps relatif ("il y a 2 heures", etc.)
         long now = System.currentTimeMillis();
         CharSequence ago = DateUtils.getRelativeTimeSpanString(tip.timestamp, now, DateUtils.MINUTE_IN_MILLIS);
         holder.timestamp.setText(ago);
 
-        // On récupère le nom de l'auteur depuis Firebase (pas stocké dans le tip lui-même)
+        // Si le tip a une photo (stockée en Base64 dans la BD), on la décode et on l'affiche
+        if (tip.imageUrl != null && !tip.imageUrl.trim().isEmpty()) {
+            holder.tipImage.setVisibility(View.VISIBLE);
+            try {
+                byte[] decodedBytes = Base64.decode(tip.imageUrl, Base64.DEFAULT);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                holder.tipImage.setImageBitmap(bitmap);
+            } catch (Exception e) {
+                holder.tipImage.setVisibility(View.GONE);
+            }
+        } else {
+            holder.tipImage.setVisibility(View.GONE);
+        }
+
+        // On récupère le nom de l'auteur et on charge son avatar
         if (tip.userId != null) {
             usersReference.child(tip.userId).child("name").addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
@@ -90,6 +99,16 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                     if (snapshot.exists()) {
                         String authorName = snapshot.getValue(String.class);
                         holder.author.setText(authorName);
+
+                        // Avatar généré automatiquement via UI Avatars (gratuit, sans clé API)
+                        // On utilise le nom de l'auteur comme seed → chaque user a un avatar unique
+                        String avatarUrl = "https://ui-avatars.com/api/?name="
+                                + authorName.replace(" ", "+")
+                                + "&background=random&color=fff&size=128";
+                        Glide.with(holder.itemView.getContext())
+                                .load(avatarUrl)
+                                .placeholder(R.drawable.default_profile_background)
+                                .into(holder.authorProfileImage);
                     }
                 }
 
@@ -99,13 +118,12 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             });
         }
 
-        // On affiche les boutons modifier/supprimer seulement si c'est MON tip
+        // Boutons modifier/supprimer visibles seulement pour mes propres tips
         if (currentUserId != null && currentUserId.equals(tip.userId)) {
             holder.btnEdit.setVisibility(View.VISIBLE);
             holder.btnDelete.setVisibility(View.VISIBLE);
 
-            // Clic sur le crayon → on ouvre AddTipActivity en mode édition
-            // avec les données actuelles du tip pré-remplies dans le formulaire
+            // Crayon → ouvre le formulaire pré-rempli pour modifier
             holder.btnEdit.setOnClickListener(v -> {
                 Intent intent = new Intent(holder.itemView.getContext(), AddTipActivity.class);
                 intent.putExtra("tipId", tip.id);
@@ -115,13 +133,12 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                 holder.itemView.getContext().startActivity(intent);
             });
 
-            // Clic sur la corbeille → confirmation puis suppression
+            // Corbeille → confirmation puis suppression
             holder.btnDelete.setOnClickListener(v -> {
                 new AlertDialog.Builder(holder.itemView.getContext())
                         .setTitle("Supprimer")
                         .setMessage("Tu veux vraiment supprimer cette astuce ?")
                         .setPositiveButton("Oui", (dialog, which) -> {
-                            // Suppression dans Firebase : tips/{tipId}
                             if (tip.id != null) {
                                 tipsReference.child(tip.id).removeValue()
                                         .addOnSuccessListener(unused ->
@@ -136,12 +153,11 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                         .show();
             });
         } else {
-            // Ce n'est pas mon tip, on cache les deux boutons
             holder.btnEdit.setVisibility(View.GONE);
             holder.btnDelete.setVisibility(View.GONE);
         }
 
-        // Clic sur le nom de l'auteur → on ouvre son profil
+        // Clic sur le nom de l'auteur → ouvre son profil
         holder.author.setOnClickListener(v -> {
             Intent intent = new Intent(holder.itemView.getContext(), ProfileActivity.class);
             intent.putExtra("userId", tip.userId);
@@ -154,12 +170,11 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
         return tipList.size();
     }
 
-    // ViewHolder : garde les références des vues d'un item pour éviter de les chercher à chaque fois
     static class TipViewHolder extends RecyclerView.ViewHolder {
         TextView title, location, author, timestamp, description;
         CircleImageView authorProfileImage;
-        ImageView btnDelete;  // icone corbeille pour supprimer
-        ImageView btnEdit;    // icone crayon pour modifier
+        ImageView btnDelete, btnEdit;
+        ImageView tipImage; // photo jointe au tip
 
         public TipViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -171,6 +186,7 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             authorProfileImage = itemView.findViewById(R.id.authorProfileImage);
             btnDelete = itemView.findViewById(R.id.btnDeleteTip);
             btnEdit = itemView.findViewById(R.id.btnEditTip);
+            tipImage = itemView.findViewById(R.id.tipImage);
         }
     }
 }
