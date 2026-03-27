@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.chip.Chip;
@@ -43,6 +44,7 @@ public class TipsFeedActivity extends AppCompatActivity {
     FirebaseAuth auth;
 
     ChipGroup chipGroup;
+    SwipeRefreshLayout swipeRefresh;
     String selectedCountry = null; // null = "Tous"
 
     @Override
@@ -55,6 +57,10 @@ public class TipsFeedActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         chipGroup = findViewById(R.id.chipGroup);
+        swipeRefresh = findViewById(R.id.swipeRefresh);
+
+        // Couleur du cercle de chargement = bleu de l'app
+        swipeRefresh.setColorSchemeResources(R.color.primary, R.color.accent);
 
         allTips = new ArrayList<>();
         filteredTips = new ArrayList<>();
@@ -70,6 +76,13 @@ public class TipsFeedActivity extends AppCompatActivity {
         auth = FirebaseAuth.getInstance();
 
         loadWelcomeHeader();
+
+        // Pull-to-refresh : tire vers le bas → recharge les tips depuis Firebase
+        swipeRefresh.setOnRefreshListener(() -> {
+            databaseReference.get().addOnCompleteListener(task -> {
+                swipeRefresh.setRefreshing(false);
+            });
+        });
 
         // Navigation du bas
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
