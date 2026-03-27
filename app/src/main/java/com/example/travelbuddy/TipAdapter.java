@@ -29,8 +29,9 @@ import de.hdodenhof.circleimageview.CircleImageView;
  * Chaque item montre le titre, le lieu, la description, le nom de l'auteur
  * et depuis combien de temps le tip a été posté.
  * En cliquant sur le nom de l'auteur, on ouvre son profil.
- * Si le tip appartient à l'utilisateur connecté, on affiche une icone
- * corbeille pour qu'il puisse le supprimer.
+ * Si le tip appartient à l'utilisateur connecté, on affiche :
+ *   - une icone crayon pour modifier le tip
+ *   - une icone corbeille pour supprimer le tip
  */
 public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
 
@@ -98,9 +99,21 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             });
         }
 
-        // On affiche la corbeille seulement si c'est MON tip
+        // On affiche les boutons modifier/supprimer seulement si c'est MON tip
         if (currentUserId != null && currentUserId.equals(tip.userId)) {
+            holder.btnEdit.setVisibility(View.VISIBLE);
             holder.btnDelete.setVisibility(View.VISIBLE);
+
+            // Clic sur le crayon → on ouvre AddTipActivity en mode édition
+            // avec les données actuelles du tip pré-remplies dans le formulaire
+            holder.btnEdit.setOnClickListener(v -> {
+                Intent intent = new Intent(holder.itemView.getContext(), AddTipActivity.class);
+                intent.putExtra("tipId", tip.id);
+                intent.putExtra("tipTitle", tip.title);
+                intent.putExtra("tipDescription", tip.description);
+                intent.putExtra("tipLocation", tip.location);
+                holder.itemView.getContext().startActivity(intent);
+            });
 
             // Clic sur la corbeille → confirmation puis suppression
             holder.btnDelete.setOnClickListener(v -> {
@@ -123,7 +136,8 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                         .show();
             });
         } else {
-            // Ce n'est pas mon tip, on cache la corbeille
+            // Ce n'est pas mon tip, on cache les deux boutons
+            holder.btnEdit.setVisibility(View.GONE);
             holder.btnDelete.setVisibility(View.GONE);
         }
 
@@ -144,7 +158,8 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
     static class TipViewHolder extends RecyclerView.ViewHolder {
         TextView title, location, author, timestamp, description;
         CircleImageView authorProfileImage;
-        ImageView btnDelete; // icone corbeille pour supprimer
+        ImageView btnDelete;  // icone corbeille pour supprimer
+        ImageView btnEdit;    // icone crayon pour modifier
 
         public TipViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -155,6 +170,7 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             description = itemView.findViewById(R.id.tipDescription);
             authorProfileImage = itemView.findViewById(R.id.authorProfileImage);
             btnDelete = itemView.findViewById(R.id.btnDeleteTip);
+            btnEdit = itemView.findViewById(R.id.btnEditTip);
         }
     }
 }
