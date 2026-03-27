@@ -14,20 +14,21 @@ public class Tip {
     public String title;
     public String description;
     public String location;      // nom du lieu (ex: "Sidi Bou Said")
+    public String country;       // pays sélectionné (ex: "Tunisie", "France")
     public String userId;        // uid de l'auteur (celui qui a posté)
-    public String imageUrl;      // url image (pas encore utilisé dans l'app)
+    public String imageUrl;      // image en Base64 ou null
     public long timestamp;       // date de publication en millisecondes
 
-    // Constructeur vide obligatoire pour que Firebase puisse
-    // désérialiser les données en objet Tip
+    // Constructeur vide obligatoire pour Firebase
     public Tip() {}
 
-    // Constructeur complet, utilisé quand on crée un nouveau tip
-    public Tip(String id, String title, String description, String location, String userId, String imageUrl, long timestamp) {
+    // Constructeur complet
+    public Tip(String id, String title, String description, String location, String country, String userId, String imageUrl, long timestamp) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.location = location;
+        this.country = country;
         this.userId = userId;
         this.imageUrl = imageUrl;
         this.timestamp = timestamp;

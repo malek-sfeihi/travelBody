@@ -7,6 +7,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -26,27 +28,28 @@ import java.util.HashMap;
 
 /*
  * Écran pour ajouter ou modifier une astuce de voyage.
- * - Mode AJOUT : formulaire vide → on crée un nouveau tip dans Firebase.
- * - Mode ÉDITION : les données existantes sont pré-remplies via l'Intent.
- * L'utilisateur peut aussi joindre une photo. L'image est compressée
- * puis stockée en Base64 directement dans la Realtime Database
- * (pas besoin de Firebase Storage ni de service payant).
+ * L'utilisateur choisit un pays dans un dropdown, remplit titre/description/lieu,
+ * peut joindre une photo (stockée en Base64) puis poste le tip.
  */
 public class AddTipActivity extends AppCompatActivity {
 
     private static final int PICK_IMAGE_REQUEST = 1;
 
+    // Liste des pays disponibles dans le dropdown
+    private static final String[] COUNTRIES = {
+            "Tunisie", "France", "Italie", "Espagne", "Maroc",
+            "Turquie", "Allemagne", "Égypte", "Japon", "USA", "Autre"
+    };
+
     private TextInputEditText titleInput, descInput, locationInput;
+    private AutoCompleteTextView countryDropdown;
     private MaterialButton postButton, selectImageButton;
     private ImageView imagePreview;
 
     private DatabaseReference databaseReference;
     private FirebaseAuth auth;
 
-    // L'image sélectionnée, convertie en chaîne Base64 après compression
     private String imageBase64 = null;
-
-    // Mode édition
     private String editTipId = null;
     private boolean isEditMode = false;
 
@@ -62,6 +65,7 @@ public class AddTipActivity extends AppCompatActivity {
         titleInput = findViewById(R.id.titleInput);
         descInput = findViewById(R.id.descInput);
         locationInput = findViewById(R.id.locationInput);
+        countryDropdown = findViewById(R.id.countryDropdown);
         postButton = findViewById(R.id.postButton);
         selectImageButton = findViewById(R.id.selectImageButton);
         imagePreview = findViewById(R.id.imagePreview);
@@ -69,18 +73,29 @@ public class AddTipActivity extends AppCompatActivity {
         databaseReference = FirebaseDatabase.getInstance().getReference("tips");
         auth = FirebaseAuth.getInstance();
 
-        // Mode édition : on pré-remplit les champs
+        // On remplit le dropdown avec la liste des pays
+        ArrayAdapter<String> countryAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_dropdown_item_1line, COUNTRIES);
+        countryDropdown.setAdapter(countryAdapter);
+
+        // Mode édition : pré-remplissage des champs
         if (getIntent().hasExtra("tipId")) {
             isEditMode = true;
             editTipId = getIntent().getStringExtra("tipId");
             titleInput.setText(getIntent().getStringExtra("tipTitle"));
             descInput.setText(getIntent().getStringExtra("tipDescription"));
             locationInput.setText(getIntent().getStringExtra("tipLocation"));
+
+            // Pré-sélectionner le pays si disponible
+            String editCountry = getIntent().getStringExtra("tipCountry");
+            if (editCountry != null) {
+                countryDropdown.setText(editCountry, false);
+            }
+
             getSupportActionBar().setTitle("Modifier le tip");
             postButton.setText("Enregistrer les modifications");
         }
 
-        // Clic sur "Ajouter une photo" → ouvre la galerie du téléphone
         selectImageButton.setOnClickListener(v -> {
             Intent intent = new Intent();
             intent.setType("image/*");
@@ -89,6 +104,12 @@ public class AddTipActivity extends AppCompatActivity {
         });
 
         postButton.setOnClickListener(v -> {
+            // Vérification que le pays est sélectionné
+            String country = countryDropdown.getText().toString().trim();
+            if (country.isEmpty()) {
+                countryDropdown.setError("Choisis un pays");
+                return;
+            }
             if (isEditMode) {
                 updateTip();
             } else {
@@ -97,34 +118,26 @@ public class AddTipActivity extends AppCompatActivity {
         });
     }
 
-    // L'utilisateur a choisi une image dans la galerie
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK
                 && data != null && data.getData() != null) {
             Uri imageUri = data.getData();
-
-            // On affiche l'aperçu
             imagePreview.setImageURI(imageUri);
             imagePreview.setVisibility(View.VISIBLE);
             selectImageButton.setText("Changer la photo");
-
-            // On compresse l'image et on la convertit en Base64
             imageBase64 = compressAndEncode(imageUri);
         }
     }
 
-    // Compresse l'image à une taille raisonnable puis la convertit en chaîne Base64.
-    // On réduit la résolution et la qualité JPEG pour que ça tienne dans la BD
-    // sans problème (on vise environ 50-100 Ko par image).
+    // Compresse l'image puis la convertit en Base64
     private String compressAndEncode(Uri imageUri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(imageUri);
             Bitmap original = BitmapFactory.decodeStream(inputStream);
             if (inputStream != null) inputStream.close();
 
-            // On redimensionne si l'image est trop grande (max 600px de large)
             int maxWidth = 600;
             Bitmap resized;
             if (original.getWidth() > maxWidth) {
@@ -135,12 +148,9 @@ public class AddTipActivity extends AppCompatActivity {
                 resized = original;
             }
 
-            // Compression en JPEG qualité 60%
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             resized.compress(Bitmap.CompressFormat.JPEG, 60, baos);
             byte[] bytes = baos.toByteArray();
-
-            // Conversion en Base64
             return Base64.encodeToString(bytes, Base64.DEFAULT);
         } catch (Exception e) {
             Toast.makeText(this, "Erreur image : " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -148,18 +158,20 @@ public class AddTipActivity extends AppCompatActivity {
         }
     }
 
-    // Crée un nouveau tip et l'enregistre dans Firebase
+    // Crée un nouveau tip avec le pays sélectionné
     private void postTip() {
         String id = databaseReference.push().getKey();
         long timestamp = System.currentTimeMillis();
+        String country = countryDropdown.getText().toString().trim();
 
         Tip tip = new Tip(
                 id,
                 titleInput.getText().toString(),
                 descInput.getText().toString(),
                 locationInput.getText().toString(),
+                country,
                 auth.getCurrentUser().getUid(),
-                imageBase64,  // chaîne Base64 ou null si pas d'image
+                imageBase64,
                 timestamp
         );
 
@@ -175,7 +187,7 @@ public class AddTipActivity extends AppCompatActivity {
                 });
     }
 
-    // Met à jour un tip existant
+    // Met à jour un tip existant (y compris le pays)
     private void updateTip() {
         if (editTipId == null) return;
 
@@ -183,8 +195,8 @@ public class AddTipActivity extends AppCompatActivity {
         updates.put("title", titleInput.getText().toString());
         updates.put("description", descInput.getText().toString());
         updates.put("location", locationInput.getText().toString());
+        updates.put("country", countryDropdown.getText().toString().trim());
 
-        // Si une nouvelle image a été choisie, on la met aussi à jour
         if (imageBase64 != null) {
             updates.put("imageUrl", imageBase64);
         }

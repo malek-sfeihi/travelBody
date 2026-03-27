@@ -130,6 +130,7 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                 intent.putExtra("tipTitle", tip.title);
                 intent.putExtra("tipDescription", tip.description);
                 intent.putExtra("tipLocation", tip.location);
+                intent.putExtra("tipCountry", tip.country);
                 holder.itemView.getContext().startActivity(intent);
             });
 
