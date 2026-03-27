@@ -30,9 +30,9 @@ import de.hdodenhof.circleimageview.CircleImageView;
 
 /*
  * Adapter pour afficher les astuces de voyage dans un RecyclerView.
- * Chaque item montre le titre, le lieu, la description, la photo (si disponible),
- * le nom de l'auteur avec son avatar et depuis combien de temps le tip a été posté.
- * Si le tip appartient à l'utilisateur connecté, on affiche les icones modifier/supprimer.
+ * Gère l'affichage du tip (titre, photo, lieu, auteur, avatar),
+ * les boutons modifier/supprimer (si c'est mon tip),
+ * et le système de likes (coeur).
  */
 public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
 
@@ -72,12 +72,12 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             holder.description.setVisibility(View.GONE);
         }
 
-        // Temps relatif ("il y a 2 heures", etc.)
+        // Temps relatif
         long now = System.currentTimeMillis();
         CharSequence ago = DateUtils.getRelativeTimeSpanString(tip.timestamp, now, DateUtils.MINUTE_IN_MILLIS);
         holder.timestamp.setText(ago);
 
-        // Si le tip a une photo (stockée en Base64 dans la BD), on la décode et on l'affiche
+        // Photo du tip en Base64
         if (tip.imageUrl != null && !tip.imageUrl.trim().isEmpty()) {
             holder.tipImage.setVisibility(View.VISIBLE);
             try {
@@ -91,7 +91,7 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             holder.tipImage.setVisibility(View.GONE);
         }
 
-        // On récupère le nom de l'auteur et on charge son avatar
+        // Nom de l'auteur + avatar
         if (tip.userId != null) {
             usersReference.child(tip.userId).child("name").addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
@@ -99,9 +99,6 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                     if (snapshot.exists()) {
                         String authorName = snapshot.getValue(String.class);
                         holder.author.setText(authorName);
-
-                        // Avatar généré automatiquement via UI Avatars (gratuit, sans clé API)
-                        // On utilise le nom de l'auteur comme seed → chaque user a un avatar unique
                         String avatarUrl = "https://ui-avatars.com/api/?name="
                                 + authorName.replace(" ", "+")
                                 + "&background=random&color=fff&size=128";
@@ -118,12 +115,61 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             });
         }
 
+        // ===== SYSTÈME DE LIKES =====
+        // On écoute le noeud likes de ce tip pour mettre à jour en temps réel
+        if (tip.id != null) {
+            DatabaseReference likesRef = tipsReference.child(tip.id).child("likes");
+
+            likesRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    long count = snapshot.getChildrenCount();
+                    // Affiche le nombre de likes (ou rien si 0)
+                    holder.likeCount.setText(count > 0 ? String.valueOf(count) : "");
+
+                    // On vérifie si MOI j'ai déjà liké ce tip
+                    boolean iLiked = snapshot.hasChild(currentUserId != null ? currentUserId : "");
+                    // Coeur plein si liké, vide sinon
+                    holder.btnLike.setImageResource(
+                            iLiked ? android.R.drawable.btn_star_big_on
+                                    : android.R.drawable.btn_star_big_off);
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                }
+            });
+
+            // Clic sur le coeur → toggle like/unlike
+            holder.btnLike.setOnClickListener(v -> {
+                if (currentUserId == null) return;
+                DatabaseReference myLikeRef = likesRef.child(currentUserId);
+
+                // On vérifie si j'ai déjà liké
+                myLikeRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            // Déjà liké → on retire le like
+                            myLikeRef.removeValue();
+                        } else {
+                            // Pas encore liké → on ajoute
+                            myLikeRef.setValue(true);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                    }
+                });
+            });
+        }
+
         // Boutons modifier/supprimer visibles seulement pour mes propres tips
         if (currentUserId != null && currentUserId.equals(tip.userId)) {
             holder.btnEdit.setVisibility(View.VISIBLE);
             holder.btnDelete.setVisibility(View.VISIBLE);
 
-            // Crayon → ouvre le formulaire pré-rempli pour modifier
             holder.btnEdit.setOnClickListener(v -> {
                 Intent intent = new Intent(holder.itemView.getContext(), AddTipActivity.class);
                 intent.putExtra("tipId", tip.id);
@@ -134,7 +180,6 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
                 holder.itemView.getContext().startActivity(intent);
             });
 
-            // Corbeille → confirmation puis suppression
             holder.btnDelete.setOnClickListener(v -> {
                 new AlertDialog.Builder(holder.itemView.getContext())
                         .setTitle("Supprimer")
@@ -158,7 +203,7 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             holder.btnDelete.setVisibility(View.GONE);
         }
 
-        // Clic sur le nom de l'auteur → ouvre son profil
+        // Clic sur le nom de l'auteur → profil
         holder.author.setOnClickListener(v -> {
             Intent intent = new Intent(holder.itemView.getContext(), ProfileActivity.class);
             intent.putExtra("userId", tip.userId);
@@ -173,9 +218,10 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
 
     static class TipViewHolder extends RecyclerView.ViewHolder {
         TextView title, location, author, timestamp, description;
+        TextView likeCount;
         CircleImageView authorProfileImage;
-        ImageView btnDelete, btnEdit;
-        ImageView tipImage; // photo jointe au tip
+        ImageView btnDelete, btnEdit, tipImage;
+        ImageView btnLike;
 
         public TipViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -188,6 +234,8 @@ public class TipAdapter extends RecyclerView.Adapter<TipAdapter.TipViewHolder> {
             btnDelete = itemView.findViewById(R.id.btnDeleteTip);
             btnEdit = itemView.findViewById(R.id.btnEditTip);
             tipImage = itemView.findViewById(R.id.tipImage);
+            btnLike = itemView.findViewById(R.id.btnLike);
+            likeCount = itemView.findViewById(R.id.likeCount);
         }
     }
 }
